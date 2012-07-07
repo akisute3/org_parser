@@ -1,6 +1,7 @@
 #!/usr/bin/env ruby
 # -*- coding: utf-8 -*-
-require './orgparser'
+$LOAD_PATH.unshift File.dirname(__FILE__)
+require 'orgparser'
 
 # Org Mode 文書を Qiita の書式に変換する
 class OrgToQiita < OrgParser
