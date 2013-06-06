@@ -9,20 +9,25 @@ class OrgParser
   DEFLIST_RE = /^\s*-(.+)\s+::\s+(.+)/
   TABLE_RE = /^\s*\|(.+)\|\s*$/
   LINE_EXAMPLE_RE = /^\s*:\s+(.+)\s*$/
-  SRC_NAME_RE = /^\s*#\+srcname:\s+(\S+)/i
-  BEGIN_SRC_RE = /^\s*#\+begin_(src)\s+(\S+)/i
-  END_SRC_RE = /^\s*#\+end_src/i
+  SRC_NAME_RE = /^\s*#\+SRCNAME:\s+(\S+)/i
+  BEGIN_SRC_RE = /^\s*#\+BEGIN_SRC\s+(\S+)/i
+  END_SRC_RE = /^\s*#\+END_SRC/i
   BEGIN_COMMENT_RE = /^\s*#\+BEGIN_(\S+)/i
   END_COMMENT_STR = '^\s*#\+END_'
   COMMENT_RE = /^#/
   INDENT_COMMENT_RE = /^\s*#\+/
   URL_RE_STR = '(?:https?|ftp)(?::\/\/[-_.!~*\'()a-zA-Z0-9;\/?:\@&=+\$,%#]+)'
+  DECORATION_RE_FORMAT = '\s%1$s(\S.*\S|\S)%1$s\s'
+  SYMBOLS = {bold: '\*', italic: '/', underlined: '_', code: '=', verbatim: '~', strike: '\+'}
+  FORMAT_METHOD_RE = /parse_.+_format/
+  DECORATION_METHOD_RE = /parse_.+_decoration/
 
 
   def parse(src)
     buf = []
 
-    lines = File.readlines(format_input_src(src)).map { |line| line.chomp }
+    lines = File.readlines(src).map { |line| line.chomp }
+    lines = format_input_src(lines)
     srcname = nil
 
     # Org Mode 文書を別の書式に変換して，文字列で返す．
@@ -59,7 +64,7 @@ class OrgParser
         srcname = $1
         next
       when BEGIN_SRC_RE
-        format, lang = $1, $2
+        lang = $1
         src = take_format(lines, END_SRC_RE)
         buf.concat parse_src_format(src[1..-2], lang, srcname)
       when BEGIN_COMMENT_RE
@@ -73,7 +78,8 @@ class OrgParser
           # コメント行は除去
           lines.shift
         else
-          buf << lines.shift
+          # 文字装飾を変換
+          buf << decorate(lines.shift)
         end
       end
       srcname = nil
@@ -87,12 +93,35 @@ class OrgParser
       end
     end
 
-    format_output_src(buf)
+    buf = format_output_src(buf)
     buf.join("\n")
   end
 
 
   private
+
+  # 警告は各メソッドにつき一回表示するため，
+  # 呼び出し元のメソッドは空のメソッドにオーバーライドされる．
+  def print_undefined_warning
+    if /^(.+?):(\d+)(?::in `(.*)')?/ =~ caller.first
+      $stderr.puts "Warning: Called undefined method \"#{$3}\""
+      self.class.instance_eval { define_method($3){|arg| []} }
+    end
+    []
+  end
+
+  # FORMAT_METHOD_RE, DECORATION_METHOD_RE に一致するメソッドを呼び出したときは
+  # 警告を出力して引数を整形せずにそのまま返す
+  def method_missing(action, *args)
+    if action =~ FORMAT_METHOD_RE or action =~ DECORATION_METHOD_RE
+      $stderr.puts "Warning: Called undefined method \"#{action}\""
+      self.class.instance_eval { define_method(action){|a| a} }
+      args[0]
+    else
+      super
+    end
+  end
+
 
   # lines の先頭から正規表現 marker にマッチする行を全て取り出して配列で返す．
   # このとき，lines から marker にマッチした行は取り除かれる．marker は取り除かない．
@@ -117,48 +146,59 @@ class OrgParser
     buf
   end
 
-  # 警告は各メソッドにつき一回表示するため，
-  # 呼び出し元のメソッドは空のメソッドにオーバーライドされる．
-  def print_undefined_warning
-    if /^(.+?):(\d+)(?::in `(.*)')?/ =~ caller.first
-      $stderr.puts "Warning: Called undefined method \"#{$3}\""
-      self.class.instance_eval { define_method($3){|arg| []} }
+
+  def decorate(line)
+    SYMBOLS.each do |decoration, symbol|
+      line.gsub!(/#{sprintf(DECORATION_RE_FORMAT, symbol)}/) do |match, string|
+        decoration_method = "parse_#{decoration.to_s.downcase}_decoration".to_sym
+        " #{send(decoration_method, $1)} "
+      end
     end
-    []
+    line
   end
 
 
-  ####################################
+  ##################################################
   # 以下，オーバーライド推奨メソッド
-  ####################################
+  #
+  # -- 別途コメントがないメソッドの引数・返り値 --
+  # 引数
+  #   lines: 各行を split した文字列リスト
+  # 返り値
+  #   文字列のリスト
+  ##################################################
 
-  def format_input_src(src)
-    src
+  # parse する前に入力テキストに整形を行う
+  def format_input_src(lines)
+    lines
   end
 
-  def format_output_src(src)
-    src
+  # 出力するバッファに最後の整形を行う
+  def format_output_src(lines)
+    lines
   end
 
-  # tags は各要素に分割された配列．
-  def parse_headline(title, tags = [])
+  # level: トップから数えた見出しの深さ
+  # title: 見出しの文字列tags はタグの各要素
+  # tags:  各タグを要素とした文字列配列
+  # 返り値: タイトルの行にしたい文字列
+  def parse_headline(level, title, *tags)
     print_undefined_warning
   end
 
-  # 引数 list は行ごとの配列で，整形はされていない
-  def parse_unordered_list(list)
+  def parse_unordered_list(lines)
     print_undefined_warning
   end
 
-  def parse_ordered_list(list)
+  def parse_ordered_list(lines)
     print_undefined_warning
   end
 
-  def parse_deflist(list)
+  def parse_deflist(lines)
     print_undefined_warning
   end
 
-  # 引数 table は Array[row][column] の二次元配列
+  # table: Array[row][column] の二次元配列
   def parse_table(table)
     print_undefined_warning
   end
@@ -167,13 +207,33 @@ class OrgParser
     print_undefined_warning
   end
 
-  def parse_src_format(src, lang, name)
+  # lang: ソースコードの言語
+  # name: ソースファイル名
+  def parse_src_format(lines, lang, name)
     print_undefined_warning
   end
 
-  # タイトル付きリンクの置換後の文字列
+  # link: URL
+  # title: ページのタイトル
+  # 返り値: タイトル付きリンクの置換後の文字列
   def replaced_link_str(link, title)
     print_undefined_warning
   end
+
+  # その他，子クラスで定義できるメソッド
+  #
+  # [parse_xxx_format]
+  #   #+BEGIN_XXX を整形するメソッド
+  # 例:
+  #   def parse_example_format(lines); end
+  #   def parse_quote_format(lines); end
+  #
+  # [parse_xxx_decoration]
+  #   文字装飾を生計するメソッドで
+  #   xxx は SYMBOLS の各キーが入る
+  # 引数:
+  #   装飾する文字列(装飾記号は削除済み)
+  # 例:
+  #   def parse_bold_decoration(str); end
 
 end

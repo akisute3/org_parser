@@ -7,40 +7,48 @@ require 'orgparser'
 class OrgToQiita < OrgParser
   private
 
-  def format_input_src(src)
-    src
-  end
-
-  def format_output_src(src)
-    src
-  end
-
-  def parse_headline(level, title, tags = [])
+  def parse_headline(level, title, *tags)
     "#{"#" * level} #{title}"
   end
 
-  def parse_unordered_list(list)
-    list
+  def parse_unordered_list(lines)
+    lines
   end
 
-  def parse_ordered_list(list)
-    list.map {|line| line.sub(/(\d+)[.)]/, '\1.')}
+  def parse_ordered_list(lines)
+    lines.map {|line| line.sub(/(\d+)[.)]/, '\1.')}
   end
 
-  def parse_src_format(src, lang, name)
+  def parse_src_format(lines, lang, name)
     if name
-      src.unshift("```#{lang}:#{name}").push("```")
+      lines.unshift("```#{lang}:#{name}").push("```")
     else
-      src.unshift("```#{lang}").push("```")
+      lines.unshift("```#{lang}").push("```")
     end
   end
 
-  def parse_quote_format(src)
-    src.map {|line| "> #{line}"}
+  def parse_quote_format(lines)
+    lines.map {|line| "> #{line}"}
   end
 
   def replaced_link_str(link, title)
     title ? "[#{title}](#{link})" : link
+  end
+
+  def parse_example_format(lines)
+    lines.unshift("```").push("```")
+  end
+
+  def parse_bold_decoration(str)
+    "**#{str}**"
+  end
+
+  def parse_italic_decoration(str)
+    "*#{str}*"
+  end
+
+  def parse_code_decoration(str)
+    "`#{str}`"
   end
 end
 

@@ -1,9 +1,3 @@
-#+TITLE: anything-ruby-methods README
-#+AUTHOR: Akisute
-#+DATE: 2012-07-07
-#+LANGUAGE: ja
-#+OPTIONS: toc:2 H:6
-
 * 概要
   Org Mode 文書を別の形式の文書に変換するパーサ．
 
@@ -15,12 +9,12 @@
   - ソースコード
   - 各種ブロック (#+begin_xxx ~ #+end_xxx)
   - タイトル付きリンク
+  - 装飾文字
 
 * 使い方
   : ruby org2xxx.rb input.org
 
   これで input.org と同じディレクトリに，変換後のファイル input.txt が作成される．
-  
 
 * 拡張方法
-  OrgParser を継承して，各種パースメソッドをオーバーライドすることで，parse メソッドによる出力を制御できる．
+  OrgParser を継承して，各種パースメソッドをオーバーライドする．org2qiita.rb 参照．
