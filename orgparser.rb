@@ -17,7 +17,7 @@ class OrgParser
   COMMENT_RE = /^#/
   INDENT_COMMENT_RE = /^\s*#\+/
   URL_RE_STR = '(?:https?|ftp)(?::\/\/[-_.!~*\'()a-zA-Z0-9;\/?:\@&=+\$,%#]+)'
-  DECORATION_RE_FORMAT = '\s%1$s(\S.*\S|\S)%1$s\s'
+  DECORATION_RE_FORMAT = '\s%1$s(\S.*?\S|\S)%1$s\s'
   SYMBOLS = {bold: '\*', italic: '/', underlined: '_', code: '=', verbatim: '~', strike: '\+'}
   FORMAT_METHOD_RE = /parse_.+_format/
   DECORATION_METHOD_RE = /parse_.+_decoration/
